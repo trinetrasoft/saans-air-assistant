@@ -168,7 +168,7 @@ function recompute() {
   state.context = buildContext({
     place: placeLabel(state.place), naqi: idx.value, levelLabel: level.label,
     dominant: idx.dominant, current: state.air.current, windows,
-  }, profile);
+  }, profile, state.result.recs);
   renderRecs();
 }
 

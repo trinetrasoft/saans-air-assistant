@@ -31,6 +31,8 @@ test('context is grounded in live data and the profile', () => {
   assert.match(ctx, /PM2\.5 180/);
   assert.match(ctx, /2 PM–4 PM/);
   assert.match(ctx, /children/);
+  assert.match(ctx, /Vetted actions: none/);
+  assert.match(buildContext(air, profile, recs), /Vetted actions: Wear an N95 mask outdoors \(Filters fine particles\.\) \| Run a HEPA/);
   assert.match(buildPrompt(ctx, 'Can kids play?'), /Question: Can kids play\?$/);
 });
 

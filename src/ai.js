@@ -38,7 +38,8 @@ const LM_OPTIONS = Object.freeze({
 
 export const SYSTEM_INSTRUCTION = [
   'You are Saans, a friendly urban air-quality assistant for families in India.',
-  'Use ONLY the context provided (live readings, forecast and household profile) plus well-established public-health guidance.',
+  'Use ONLY the context provided (live readings, forecast, household profile and the vetted action list) plus well-established public-health guidance.',
+  'Prefer the vetted actions and never contradict them (e.g. LPG and induction are cleaner than wood, dung or coal).',
   'Give short, practical answers (max 120 words) with concrete steps, low-emission routines, indoor air tips and sustainable alternatives.',
   'For every suggestion, say in one clause what difference it makes (the impact).',
   'Never give medical diagnoses; for symptoms like breathlessness or chest pain, advise contacting a doctor.',
@@ -59,8 +60,9 @@ export function sanitizeQuestion(q) {
  * @param {{ place: string, naqi: number, levelLabel: string, dominant: string,
  *   current: Record<string, unknown>, windows: {start:string,end:string,avgPm25:number}[] }} air
  * @param {Record<string, unknown>} profile normalised profile
+ * @param {{ title: string, impact: string }[]} [recs] vetted actions from the advisor, highest priority first
  */
-export function buildContext(air, profile) {
+export function buildContext(air, profile, recs = []) {
   const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? Math.round(v) : 'n/a');
   const windows = (air.windows ?? [])
     .map((w) => `${formatRange(w.start, w.end)} (~${w.avgPm25} µg/m³)`)
@@ -75,6 +77,7 @@ export function buildContext(air, profile) {
     `Now: PM2.5 ${num(air.current.pm2_5)} µg/m³, PM10 ${num(air.current.pm10)}, NO2 ${num(air.current.nitrogen_dioxide)}, O3 ${num(air.current.ozone)}`,
     `Cleanest upcoming windows: ${windows}`,
     `Household: ${household}; commute: ${profile.commute}; cooking: ${profile.cooking}; purifier: ${profile.purifier ? 'yes' : 'no'}; heating: ${profile.heating}`,
+    `Vetted actions: ${recs.slice(0, 6).map((r) => `${r.title} (${r.impact})`).join(' | ') || 'none'}`,
   ].join('\n');
 }
 
