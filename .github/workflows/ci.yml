@@ -13,11 +13,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install dev tools (lint + type check only; the app has no runtime dependencies)
+      - name: Install dev tools (the app itself has no runtime dependencies)
         run: npm install --no-audit --no-fund
       - name: Lint
         run: npm run lint
-      - name: Type check (JSDoc + // @ts-check)
+      - name: Type check (JSDoc + tsc --strict)
         run: npm run typecheck
       - name: Unit tests with coverage
         run: npm run coverage
+      - name: Install Chromium for end-to-end tests
+        run: npx playwright install --with-deps chromium
+      - name: End-to-end and accessibility tests
+        run: npm run test:e2e

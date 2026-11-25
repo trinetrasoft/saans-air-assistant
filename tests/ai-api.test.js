@@ -32,7 +32,9 @@ test('context is grounded in live data and the profile', () => {
   assert.match(ctx, /2 PM–4 PM/);
   assert.match(ctx, /children/);
   assert.match(ctx, /Vetted actions: none/);
-  assert.match(buildContext(air, profile, recs), /Vetted actions: Wear an N95 mask outdoors \(Filters fine particles\.\) \| Run a HEPA/);
+  const grounded = buildContext(air, profile, recs);
+  assert.match(grounded, /Vetted actions: Wear an N95 mask outdoors \(Filters fine particles\.\)/);
+  assert.match(grounded, / \| Run a HEPA/);
   assert.match(buildPrompt(ctx, 'Can kids play?'), /Question: Can kids play\?$/);
 });
 
@@ -51,7 +53,7 @@ test('uses Chrome on-device model when present', async () => {
   };
   assert.equal(await onDeviceAvailable(globalObj), true);
   const r = await ask({ question: 'hi', context: 'c', recs, globalObj });
-  assert.deepEqual(r, { text: 'nano:true', provider: 'on-device' });
+  assert.deepEqual(r, { text: 'nano:true', provider: 'on-device', fallbacks: [] });
 });
 
 test('uses Gemini with the key in a header, not the URL', async () => {
@@ -61,7 +63,7 @@ test('uses Gemini with the key in a header, not the URL', async () => {
     return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: 'Stay in.' }] } }] }) };
   };
   const r = await ask({ question: 'q', context: 'c', recs, apiKey: 'k-123', fetchImpl, globalObj: {} });
-  assert.deepEqual(r, { text: 'Stay in.', provider: 'gemini' });
+  assert.deepEqual(r, { text: 'Stay in.', provider: 'gemini', fallbacks: [] });
   assert.ok(!seen.url.includes('k-123'));
   assert.equal(seen.opts.headers['x-goog-api-key'], 'k-123');
   assert.match(JSON.parse(seen.opts.body).systemInstruction.parts[0].text, /Saans/);
@@ -71,6 +73,7 @@ test('Gemini failure degrades to rules', async () => {
   const fetchImpl = async () => ({ ok: false, status: 429 });
   const r = await ask({ question: 'mask', context: 'c', recs, apiKey: 'k', fetchImpl, globalObj: {} });
   assert.equal(r.provider, 'rules');
+  assert.deepEqual(r.fallbacks, ['Gemini API unavailable: Gemini request failed (429)']);
   await assert.rejects(askGemini('p', 'k', { fetchImpl }), /429/);
   await assert.rejects(askGemini('p', ''), /Missing API key/);
 });
@@ -86,6 +89,7 @@ test('a hanging model times out and falls back to rules', async () => {
   const globalObj = { LanguageModel: { availability: async () => 'available', create: async () => ({ prompt: () => new Promise(() => {}) }) } };
   const r = await ask({ question: 'purifier', context: 'c', recs, globalObj, timeoutMs: 20 });
   assert.equal(r.provider, 'rules');
+  assert.deepEqual(r.fallbacks, ['On-device AI unavailable: Model timed out']);
   await assert.rejects(withTimeout(new Promise(() => {}), 10), /timed out/);
   assert.equal(await withTimeout(Promise.resolve(7), 10), 7);
 });
@@ -109,7 +113,11 @@ test('searchPlaces validates and maps results', async () => {
 test('fetchAirQuality builds the request and checks the response', async () => {
   clearCache();
   let url;
-  const fetchImpl = async (u) => { url = u; return { ok: true, json: async () => ({ current: { pm2_5: 1 }, hourly: { time: [], pm2_5: [] } }) }; };
+  const body = { current: { pm2_5: 1 }, hourly: { time: [], pm2_5: [] } };
+  const fetchImpl = async (u) => {
+    url = u;
+    return { ok: true, json: async () => body };
+  };
   const r = await fetchAirQuality(28.6, 77.2, fetchImpl);
   assert.equal(r.current.pm2_5, 1);
   assert.match(url, /latitude=28\.6000/);

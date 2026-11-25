@@ -31,6 +31,7 @@ export async function onDeviceAvailable(globalObj = globalThis) {
     if (!LM || typeof LM.availability !== 'function') return false;
     return (await LM.availability(LM_OPTIONS)) === 'available';
   } catch {
+    // Older Chrome builds throw for unsupported options: treat as unavailable.
     return false;
   }
 }

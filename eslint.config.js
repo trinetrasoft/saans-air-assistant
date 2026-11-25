@@ -10,6 +10,7 @@ export default [
         clearTimeout: 'readonly', globalThis: 'readonly', Event: 'readonly', Node: 'readonly', console: 'readonly',
         HTMLElement: 'readonly', HTMLInputElement: 'readonly', HTMLSelectElement: 'readonly',
         HTMLFormElement: 'readonly', HTMLButtonElement: 'readonly', SubmitEvent: 'readonly', Storage: 'readonly',
+        process: 'readonly', URL: 'readonly',
       },
     },
     rules: {
@@ -30,7 +31,7 @@ export default [
       'max-params': ['error', 4],
       'max-lines-per-function': ['error', { max: 60, skipBlankLines: true, skipComments: true }],
       'max-lines': ['error', { max: 250, skipBlankLines: true, skipComments: true }],
-      'no-magic-numbers': 'off',
+      'max-len': ['error', { code: 120, ignoreStrings: true, ignoreTemplateLiterals: true, ignoreUrls: true }],
       'no-console': 'error',
       'no-eval': 'error',
       'no-implied-eval': 'error',

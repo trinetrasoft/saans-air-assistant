@@ -105,15 +105,15 @@ export function renderThinking() {
 
 /**
  * @param {string} question
- * @param {string} text
- * @param {import('../ai.js').Provider} provider
+ * @param {import('../ai.js').Answer} answer
  */
-export function renderAnswer(question, text, provider) {
+export function renderAnswer(question, { text, provider, fallbacks }) {
   const out = $('#answer');
+  const source = [`Answered by: ${providerLabel(provider)}`, ...fallbacks].join('. ');
   out.replaceChildren(
     el('p', { cls: 'q', text: question }),
     ...answerParagraphs(text).map((para) => el('p', { text: para })),
-    el('p', { cls: 'src', text: `Answered by: ${providerLabel(provider)}` }),
+    el('p', { cls: 'src', text: source }),
   );
   out.setAttribute('aria-busy', 'false');
 }

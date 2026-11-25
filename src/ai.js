@@ -37,24 +37,57 @@ export function withTimeout(promise, ms = AI.timeoutMs) {
 }
 
 /**
- * Ask a question using the best available provider.
- * @param {{ question: string, context: string, recs: { title: string, action: string, impact: string, group: string }[],
- *   apiKey?: string, model?: string, fetchImpl?: typeof fetch, globalObj?: any, timeoutMs?: number }} opts
- * @returns {Promise<{ text: string, provider: Provider }>}
+ * @typedef {object} AskOptions
+ * @property {string} question
+ * @property {string} context grounding context from `buildContext`
+ * @property {{ title: string, action: string, impact: string, group: string }[]} recs vetted actions
+ * @property {string} [apiKey] optional Gemini API key
+ * @property {string} [model]
+ * @property {typeof fetch} [fetchImpl]
+ * @property {any} [globalObj] where to look for Chrome's `LanguageModel`
+ * @property {number} [timeoutMs]
+ *
+ * @typedef {object} Answer
+ * @property {string} text
+ * @property {Provider} provider which provider answered
+ * @property {string[]} fallbacks reasons earlier providers were skipped (shown to the user)
+ */
+
+/**
+ * Ask a question using the best available provider. Failures are not
+ * swallowed silently: each one is recorded in `fallbacks`.
+ * @param {AskOptions} opts
+ * @returns {Promise<Answer>}
  */
 export async function ask({
   question, context, recs, apiKey, model, fetchImpl = fetch, globalObj = globalThis, timeoutMs = AI.timeoutMs,
 }) {
   const prompt = buildPrompt(context, question);
+  /** @type {string[]} */
+  const fallbacks = [];
   if (await onDeviceAvailable(globalObj)) {
     try {
-      return { text: await withTimeout(askOnDevice(prompt, globalObj), timeoutMs), provider: 'on-device' };
-    } catch { /* fall through to the next provider */ }
+      const text = await withTimeout(askOnDevice(prompt, globalObj), timeoutMs);
+      return { text, provider: 'on-device', fallbacks };
+    } catch (err) {
+      fallbacks.push(`On-device AI unavailable: ${errorMessage(err)}`);
+    }
   }
   if (apiKey) {
     try {
-      return { text: await withTimeout(askGemini(prompt, apiKey, { model, fetchImpl }), timeoutMs), provider: 'gemini' };
-    } catch { /* fall through to the deterministic answer */ }
+      const text = await withTimeout(askGemini(prompt, apiKey, { model, fetchImpl }), timeoutMs);
+      return { text, provider: 'gemini', fallbacks };
+    } catch (err) {
+      fallbacks.push(`Gemini API unavailable: ${errorMessage(err)}`);
+    }
   }
-  return { text: fallbackAnswer(question, recs), provider: 'rules' };
+  return { text: fallbackAnswer(question, recs), provider: 'rules', fallbacks };
+}
+
+/**
+ * @param {unknown} err
+ * @returns {string}
+ */
+function errorMessage(err) {
+  return err instanceof Error ? err.message : String(err);
 }

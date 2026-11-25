@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { analyse } from '../src/analysis.js';
+import { analyse, NoDataError } from '../src/analysis.js';
 import {
   loadProfile, saveProfile, normaliseProfile, sensitiveMembers, DEFAULT_PROFILE,
 } from '../src/profile.js';
@@ -9,7 +9,10 @@ import { STORAGE_KEYS, THRESHOLDS } from '../src/config.js';
 
 const place = { name: 'Delhi', admin1: 'Delhi', country: 'India', latitude: 28.65, longitude: 77.23 };
 const hours = Array.from({ length: 24 }, (_, h) => `2026-11-25T${String(h).padStart(2, '0')}:00`);
-const pm = [200, 190, 185, 180, 170, 160, 150, 120, 100, 80, 60, 50, 48, 47, 52, 70, 110, 150, 190, 220, 240, 230, 220, 210];
+const pm = [
+  200, 190, 185, 180, 170, 160, 150, 120, 100, 80, 60, 50,
+  48, 47, 52, 70, 110, 150, 190, 220, 240, 230, 220, 210,
+];
 const air = {
   current: { time: '2026-11-25T09:00', pm2_5: 127, pm10: 129, nitrogen_dioxide: 95, ozone: 22 },
   hourly: { time: hours, pm2_5: pm },
@@ -36,9 +39,15 @@ test('analyse runs the full pipeline from raw data to plan and grounding', () =>
   assert.match(a.context, /Vetted actions: /);
 });
 
-test('analyse tolerates missing PM data', () => {
-  const a = analyse(place, { current: { time: '2026-11-25T09:00' }, hourly: { time: [], pm2_5: [] } }, DEFAULT_PROFILE);
-  assert.equal(a.index.value, 0);
+test('analyse reports missing PM data with a typed error', () => {
+  const empty = { current: { time: '2026-11-25T09:00' }, hourly: { time: [], pm2_5: [] } };
+  assert.throws(() => analyse(place, empty, DEFAULT_PROFILE), NoDataError);
+});
+
+test('analyse works from PM10 alone and without a forecast', () => {
+  const pm10Only = { current: { time: '2026-11-25T09:00', pm10: 80 }, hourly: { time: [], pm2_5: [] } };
+  const a = analyse(place, pm10Only, DEFAULT_PROFILE);
+  assert.equal(a.index.dominant, 'pm10');
   assert.equal(a.outing, null);
   assert.deepEqual(a.windows, []);
 });

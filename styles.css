@@ -38,7 +38,7 @@ h3 { font-size: 16px; margin: 16px 0 8px; }
 
 .row { display: flex; gap: 8px; flex-wrap: wrap; }
 input[type="search"], input[type="text"], input[type="password"], select {
-  font: inherit; padding: 10px 12px; border: 1px solid #b9b3a6; border-radius: 10px; background: #fff; color: var(--ink); min-width: 0;
+  font: inherit; padding: 10px 12px; border: 1px solid #6f6a60; border-radius: 10px; background: #fff; color: var(--ink); min-width: 0;
 }
 .row input { flex: 1 1 260px; }
 .field-label { flex: 1 0 100%; font-weight: 600; }
@@ -49,6 +49,7 @@ button:disabled { opacity: .6; cursor: progress; }
 button { font: inherit; padding: 10px 16px; border-radius: 10px; border: 0; background: var(--accent); color: var(--accent-ink); cursor: pointer; }
 button:hover { filter: brightness(1.08); }
 button.ghost { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+.profile fieldset { border-color: #8a8478; }
 
 .places { list-style: none; padding: 0; margin: 10px 0 0; display: flex; gap: 8px; flex-wrap: wrap; }
 .place-btn { background: #e7f3f1; color: #0b4f49; }

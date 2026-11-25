@@ -85,6 +85,7 @@ export function loadProfile(storage = globalThis.localStorage) {
     const raw = storage?.getItem(STORAGE_KEYS.profile);
     return raw ? normaliseProfile(JSON.parse(raw)) : null;
   } catch {
+    // Storage can be blocked (privacy mode) or hold corrupt JSON: start fresh.
     return null;
   }
 }
@@ -99,6 +100,7 @@ export function saveProfile(profile, storage = globalThis.localStorage) {
     storage.setItem(STORAGE_KEYS.profile, JSON.stringify(normaliseProfile({ ...profile })));
     return true;
   } catch {
+    // Quota exceeded or storage blocked: the app keeps working without persistence.
     return false;
   }
 }

@@ -5,18 +5,34 @@
   "type": "module",
   "private": true,
   "license": "MIT",
+  "author": "Trinetra Soft",
+  "homepage": "https://trinetrasoft.github.io/saans-air-assistant/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/trinetrasoft/saans-air-assistant.git"
+  },
+  "keywords": [
+    "air-quality",
+    "naqi",
+    "gemini",
+    "genai",
+    "accessibility",
+    "promptwars"
+  ],
   "scripts": {
     "test": "node --test tests/*.test.js",
     "coverage": "node --test --experimental-test-coverage tests/*.test.js",
     "lint": "eslint .",
     "typecheck": "tsc -p jsconfig.json",
-    "check": "npm run lint && npm run typecheck && npm test"
+    "check": "npm run lint && npm run typecheck && npm test",
+    "test:e2e": "node --test tests/e2e/*.test.js"
   },
   "engines": {
     "node": ">=20"
   },
   "devDependencies": {
     "eslint": "^9.0.0",
-    "typescript": "^5.6.0"
+    "typescript": "^5.6.0",
+    "playwright": "^1.48.0"
   }
 }

@@ -6,7 +6,7 @@
 
 import { searchPlaces, fetchAirQuality } from './api.js';
 import { ask, onDeviceAvailable, sanitizeQuestion } from './ai.js';
-import { analyse } from './analysis.js';
+import { analyse, NoDataError } from './analysis.js';
 import { loadProfile, saveProfile } from './profile.js';
 import { placeLabel } from './view.js';
 import { $, setStatus } from './ui/dom.js';
@@ -27,9 +27,12 @@ const state = { place: null, air: null, analysis: null, apiKey: '', asking: fals
 
 const profileForm = /** @type {HTMLFormElement} */ ($('#profile'));
 
-/** Re-run the analysis for the current place and profile, then render. */
+/**
+ * Re-run the analysis for the current place and profile, then render.
+ * @returns {Analysis|null}
+ */
 function refresh() {
-  if (!state.place || !state.air) return;
+  if (!state.place || !state.air) return null;
   const profile = readProfileForm(profileForm);
   saveProfile(profile);
   state.analysis = analyse(state.place, state.air, profile);
@@ -37,6 +40,8 @@ function refresh() {
   renderImpact(state.analysis);
   renderForecast(state.analysis);
   renderPlan(state.analysis.plan.recs);
+  document.title = `${state.analysis.level.label} air in ${state.place.name} · Saans`;
+  return state.analysis;
 }
 
 /** @param {Place} place */
@@ -45,12 +50,15 @@ async function selectPlace(place) {
   try {
     state.air = await fetchAirQuality(place.latitude, place.longitude);
     state.place = place;
+    const analysis = refresh();
     for (const id of RESULT_SECTIONS) $(id).hidden = false;
-    refresh();
-    setStatus(`Showing air quality for ${placeLabel(place)}.`);
+    const count = analysis?.plan.recs.length ?? 0;
+    setStatus(`Showing air quality for ${placeLabel(place)}. Your plan has ${count} actions.`);
     $('#now-h').focus();
   } catch (err) {
-    setStatus(`Could not load air quality: ${/** @type {Error} */ (err).message}. Please try again.`);
+    state.place = null;
+    const reason = err instanceof NoDataError ? err.message : 'the air-quality service did not respond';
+    setStatus(`Could not load air quality: ${reason}. Please try again or choose another place.`);
   }
 }
 
@@ -89,10 +97,10 @@ async function onAsk(event) {
   button.disabled = true;
   renderThinking();
   try {
-    const { text, provider } = await ask({
+    const answer = await ask({
       question, context: state.analysis.context, recs: state.analysis.plan.recs, apiKey: state.apiKey,
     });
-    renderAnswer(question, text, provider);
+    renderAnswer(question, answer);
   } finally {
     state.asking = false;
     button.disabled = false;
@@ -111,7 +119,10 @@ async function init() {
   if (saved) writeProfileForm(profileForm, saved);
   $('#search-form').addEventListener('submit', (e) => onSearch(/** @type {SubmitEvent} */ (e)));
   $('#locate').addEventListener('click', onLocate);
-  profileForm.addEventListener('change', refresh);
+  profileForm.addEventListener('change', () => {
+    const analysis = refresh();
+    if (analysis) setStatus(`Plan updated: ${analysis.plan.recs.length} actions.`);
+  });
   $('#ask-form').addEventListener('submit', onAsk);
   $('#api-key').addEventListener('input', (e) => {
     state.apiKey = /** @type {HTMLInputElement} */ (e.target).value.trim();

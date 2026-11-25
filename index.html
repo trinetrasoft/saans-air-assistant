@@ -83,7 +83,7 @@
           <p id="level" class="level"></p>
           <p id="level-advice"></p>
           <dl id="pollutants" class="pollutants"></dl>
-          <p class="note">Index shown is India's NAQI, estimated from current PM2.5/PM10 (CPCB breakpoints). Data: Open-Meteo / CAMS.</p>
+          <p class="note">Index shown is India's <abbr title="National Air Quality Index">NAQI</abbr>, estimated from current PM2.5/PM10 (CPCB breakpoints). Data: Open-Meteo / CAMS.</p>
         </div>
       </div>
       <h3>What one hour outside costs you</h3>
@@ -95,7 +95,7 @@
 
     <section id="plan" class="card" aria-labelledby="plan-h" hidden>
       <h2 id="plan-h">4 · Your plan for today</h2>
-      <div id="recs" class="recs" aria-live="polite"></div>
+      <div id="recs" class="recs"></div>
     </section>
 
     <section id="ask" class="card" aria-labelledby="ask-h" hidden>
@@ -114,7 +114,7 @@
       <details class="key">
         <summary>AI settings</summary>
         <p>Saans uses Chrome's built-in on-device Gemini Nano when available. Otherwise you can paste your own
-          <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Gemini API key</a>.
+          <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Gemini API key<span class="sr-only"> (opens in a new tab)</span></a>.
           It is sent only to Google's Gemini API and kept in memory for this tab. Without either, Saans answers from its built-in guidance engine.</p>
         <label for="api-key">Gemini API key</label>
         <input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="Optional" aria-describedby="api-key-hint">
