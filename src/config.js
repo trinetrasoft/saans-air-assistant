@@ -37,6 +37,11 @@ export const AI = Object.freeze({
   groundingActions: 6,
 });
 
+export const CHART = Object.freeze({
+  /** Minimum y-axis top (µg/m³) so clean days don't look alarming. */
+  minScalePm25: 60,
+});
+
 export const FORECAST = Object.freeze({
   horizonHours: 24,
   windowHours: 2,

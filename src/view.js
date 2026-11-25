@@ -5,6 +5,7 @@
 
 import { naqi, category } from './aqi.js';
 import { formatHour } from './forecast.js';
+import { CHART } from './config.js';
 
 /** @param {{ name: string, admin1?: string, country?: string }} p */
 export function placeLabel(p) {
@@ -17,7 +18,7 @@ export function placeLabel(p) {
  * @param {{ start: string, end: string }[]} windows
  */
 export function chartModel(points, windows) {
-  const max = Math.max(60, ...points.map((p) => p.pm25));
+  const max = Math.max(CHART.minScalePm25, ...points.map((p) => p.pm25));
   const bars = points.map((p) => {
     const idx = naqi({ pm25: p.pm25 });
     return {
