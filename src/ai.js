@@ -19,6 +19,16 @@ import { formatRange } from './forecast.js';
 export const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 export const DEFAULT_MODEL = 'gemini-flash-latest';
 export const MAX_QUESTION_CHARS = 500;
+export const MODEL_TIMEOUT_MS = 25000;
+
+/** Reject if `promise` does not settle within `ms`. */
+export function withTimeout(promise, ms = MODEL_TIMEOUT_MS) {
+  let timer;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Model timed out')), ms); }),
+  ]).finally(() => clearTimeout(timer));
+}
 /** Declared languages for Chrome's Prompt API (required for quality and safety checks). */
 const LM_OPTIONS = Object.freeze({
   expectedInputs: [{ type: 'text', languages: ['en'] }],
@@ -77,8 +87,9 @@ export async function onDeviceAvailable(globalObj = globalThis) {
   try {
     const LM = globalObj.LanguageModel;
     if (!LM || typeof LM.availability !== 'function') return false;
-    const a = await LM.availability(LM_OPTIONS);
-    return a === 'available' || a === 'downloadable' || a === 'downloading';
+    // Only use the model when it is already on the device: 'downloadable' or
+    // 'downloading' would make the user wait for a multi-gigabyte download.
+    return (await LM.availability(LM_OPTIONS)) === 'available';
   } catch {
     return false;
   }
@@ -139,16 +150,18 @@ export function fallbackAnswer(question, recs) {
  * Ask a question using the best available provider.
  * @returns {Promise<{ text: string, provider: 'on-device'|'gemini'|'rules' }>}
  */
-export async function ask({ question, context, recs, apiKey, model, fetchImpl = fetch, globalObj = globalThis }) {
+export async function ask({
+  question, context, recs, apiKey, model, fetchImpl = fetch, globalObj = globalThis, timeoutMs = MODEL_TIMEOUT_MS,
+}) {
   const prompt = buildPrompt(context, question);
   if (await onDeviceAvailable(globalObj)) {
     try {
-      return { text: await askOnDevice(prompt, globalObj), provider: 'on-device' };
+      return { text: await withTimeout(askOnDevice(prompt, globalObj), timeoutMs), provider: 'on-device' };
     } catch { /* fall through */ }
   }
   if (apiKey) {
     try {
-      return { text: await askGemini(prompt, apiKey, { model, fetchImpl }), provider: 'gemini' };
+      return { text: await withTimeout(askGemini(prompt, apiKey, { model, fetchImpl }), timeoutMs), provider: 'gemini' };
     } catch { /* fall through */ }
   }
   return { text: fallbackAnswer(question, recs), provider: 'rules' };

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   sanitizeQuestion, buildContext, buildPrompt, ask, askGemini, fallbackAnswer, onDeviceAvailable,
-  MAX_QUESTION_CHARS,
+  MAX_QUESTION_CHARS, withTimeout,
 } from '../src/ai.js';
 import { searchPlaces, fetchAirQuality, validCoords, clearCache } from '../src/api.js';
 
@@ -71,6 +71,21 @@ test('Gemini failure degrades to rules', async () => {
   assert.equal(r.provider, 'rules');
   await assert.rejects(askGemini('p', 'k', { fetchImpl }), /429/);
   await assert.rejects(askGemini('p', ''), /Missing API key/);
+});
+
+test('on-device model is skipped while it is still downloading', async () => {
+  const globalObj = { LanguageModel: { availability: async () => 'downloading', create: async () => { throw new Error('should not be called'); } } };
+  assert.equal(await onDeviceAvailable(globalObj), false);
+  const r = await ask({ question: 'mask', context: 'c', recs, globalObj });
+  assert.equal(r.provider, 'rules');
+});
+
+test('a hanging model times out and falls back to rules', async () => {
+  const globalObj = { LanguageModel: { availability: async () => 'available', create: async () => ({ prompt: () => new Promise(() => {}) }) } };
+  const r = await ask({ question: 'purifier', context: 'c', recs, globalObj, timeoutMs: 20 });
+  assert.equal(r.provider, 'rules');
+  await assert.rejects(withTimeout(new Promise(() => {}), 10), /timed out/);
+  assert.equal(await withTimeout(Promise.resolve(7), 10), 7);
 });
 
 test('fallbackAnswer ranks by keyword relevance', () => {

@@ -35,7 +35,7 @@ The recommendation engine itself is deterministic and fully tested. The model *e
 
 ## Quality
 
-- **Testing:** 27 unit tests with Node's built-in test runner (`npm test`), about 99% line coverage of `src/`. CI runs on every push.
+- **Testing:** 29 unit tests with Node's built-in test runner (`npm test`), about 99% line coverage of `src/`. CI runs on every push.
 - **Security:** a strict Content-Security-Policy that whitelists only the APIs it calls. No `innerHTML`: all dynamic text goes through `textContent`. User input is sanitised and capped. The profile is validated against an allow-list. The API key is never placed in a URL or stored persistently. `no-referrer`. No dependencies.
 - **Efficiency:** about 30 KB, zero runtime dependencies, no build step. API responses are cached in memory for 10 minutes, and requests time out after 10 s.
 - **Accessibility:** semantic landmarks, a skip link, labelled controls, `aria-live` updates, a text alternative for the gauge and chart, colour always paired with text, visible focus rings and `prefers-reduced-motion`.
