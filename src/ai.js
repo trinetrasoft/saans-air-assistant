@@ -19,7 +19,7 @@ import { formatRange } from './forecast.js';
 export const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 export const DEFAULT_MODEL = 'gemini-flash-latest';
 export const MAX_QUESTION_CHARS = 500;
-export const MODEL_TIMEOUT_MS = 25000;
+export const MODEL_TIMEOUT_MS = 60000; // on-device first runs can take ~20 s
 
 /** Reject if `promise` does not settle within `ms`. */
 export function withTimeout(promise, ms = MODEL_TIMEOUT_MS) {

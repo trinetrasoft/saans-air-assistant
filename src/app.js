@@ -194,7 +194,7 @@ async function onAsk(e) {
   const question = sanitizeQuestion($('#question').value);
   if (!question || !state.result) return;
   const out = $('#answer');
-  out.replaceChildren(el('p', { cls: 'muted', text: 'Thinking…' }));
+  out.replaceChildren(el('p', { cls: 'muted', text: 'Thinking… (on-device AI can take up to 20 seconds the first time)' }));
   const { text, provider } = await ask({
     question, context: state.context, recs: state.result.recs, apiKey: state.apiKey,
   });
