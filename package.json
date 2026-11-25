@@ -1,0 +1,13 @@
+{
+  "name": "saans-air-quality-assistant",
+  "version": "1.0.0",
+  "description": "Saans: GenAI urban air-quality assistant (PromptWars Virtual, Challenge 6)",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "coverage": "node --test --experimental-test-coverage tests/*.test.js"
+  },
+  "engines": { "node": ">=20" }
+}
