@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Open-Meteo clients (free, no API key, CORS-enabled).
  * `fetchImpl` is injectable so the functions can be unit-tested offline.

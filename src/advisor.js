@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Deterministic recommendation engine. Given the air-quality situation and a
  * household profile, it produces ranked, explainable actions in four groups:
@@ -8,6 +9,7 @@
 
 import { category } from './aqi.js';
 import { formatHour, formatRange } from './forecast.js';
+import { outingComparison, inDelhiNcr, grapStage } from './impact.js';
 
 /**
  * @typedef {'car'|'two-wheeler'|'public'|'walk-cycle'|'wfh'} Commute
@@ -45,7 +47,8 @@ export function isSensitive(p) {
 }
 
 /**
- * @param {{ naqi: number, windows?: {start:string,end:string,avgPm25:number}[], worst?: {time:string,pm25:number}|null }} air
+ * @param {{ naqi: number, pm25?: number, lat?: number, lon?: number,
+ *   windows?: {start:string,end:string,avgPm25:number}[], worst?: {time:string,pm25:number}|null }} air
  * @param {Profile} rawProfile
  * @returns {{ level: ReturnType<typeof category>, sensitive: boolean, recs: Rec[] }}
  */
@@ -55,6 +58,10 @@ export function advise(air, rawProfile) {
   const sensitive = isSensitive(p);
   const bad = air.naqi > 100; // Moderate or worse
   const veryBad = air.naqi > 300; // Very Poor or worse
+  const win = air.windows?.[0];
+  const outing = Number.isFinite(air.pm25)
+    ? outingComparison({ nowPm25: /** @type {number} */ (air.pm25), windowPm25: win?.avgPm25 ?? null })
+    : null;
   /** @type {Rec[]} */
   const recs = [];
   const add = (r) => recs.push(r);
@@ -65,7 +72,9 @@ export function advise(air, rawProfile) {
       id: 'mask', group: 'health', priority: veryBad || sensitive ? 1 : 2,
       title: 'Wear a well-fitted N95/FFP2 outdoors',
       action: 'Use a certified N95 or FFP2 respirator that seals around the nose; cloth and surgical masks do not stop fine particles.',
-      impact: 'N95 respirators are rated to filter at least 95% of fine airborne particles when fitted properly, sharply cutting the PM2.5 you inhale on the street.',
+      impact: outing
+        ? `A one-hour walk right now means inhaling about ${outing.now} µg of PM2.5; a well-fitted N95 (rated ≥95% filtration) can cut that to about ${outing.withMask} µg.`
+        : 'N95 respirators are rated to filter at least 95% of fine airborne particles when fitted properly, sharply cutting the PM2.5 you inhale on the street.',
     });
   }
   if (bad && sensitive) {
@@ -88,13 +97,14 @@ export function advise(air, rawProfile) {
   }
 
   // --- Daily routine -----------------------------------------------------
-  const win = air.windows?.[0];
   if (win) {
     add({
       id: 'best-window', group: 'routine', priority: bad ? 1 : 3,
       title: `Plan outdoor tasks for ${formatRange(win.start, win.end)}`,
       action: `The forecast's cleanest stretch today averages about ${win.avgPm25} µg/m³ PM2.5. Schedule errands, school runs or walks then.`,
-      impact: 'Shifting the same activity into the cleanest hours lowers your exposure without changing what you do.',
+      impact: outing && outing.windowSaving > 0
+        ? `Doing a one-hour errand then instead of now cuts the PM2.5 you inhale from about ${outing.now} µg to ${outing.inWindow} µg, ${outing.windowSaving}% less, without changing what you do.`
+        : 'Shifting the same activity into the cleanest hours lowers your exposure without changing what you do.',
     });
   }
   if (air.worst && bad) {
@@ -121,6 +131,17 @@ export function advise(air, rawProfile) {
       title: 'Take quieter streets and parks, away from main roads',
       action: 'Even one block away from heavy traffic usually means cleaner air. Avoid idling junctions.',
       impact: 'Pollution from traffic falls off quickly with distance from busy roads, so the route matters as much as the time.',
+    });
+  }
+
+  const grap = Number.isFinite(air.lat) && Number.isFinite(air.lon)
+    && inDelhiNcr(/** @type {number} */ (air.lat), /** @type {number} */ (air.lon)) ? grapStage(air.naqi) : null;
+  if (grap) {
+    add({
+      id: 'grap', group: 'routine', priority: 2,
+      title: `Delhi-NCR: GRAP Stage ${grap.stage} conditions`,
+      action: `At this level CAQM's Graded Response Action Plan typically triggers ${grap.measures} Check the latest CAQM order before you travel.`,
+      impact: 'Following the stage rules (and planning around them) keeps your trips legal and avoids adding to emissions on the days the region needs it most.',
     });
   }
 

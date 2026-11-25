@@ -6,12 +6,18 @@ on:
 permissions:
   contents: read
 jobs:
-  test:
+  quality:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm test
-      - run: npm run coverage
+      - name: Install dev tools (lint + type check only; the app has no runtime dependencies)
+        run: npm install --no-audit --no-fund
+      - name: Lint
+        run: npm run lint
+      - name: Type check (JSDoc + // @ts-check)
+        run: npm run typecheck
+      - name: Unit tests with coverage
+        run: npm run coverage

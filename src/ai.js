@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Generative-AI layer for "Ask Saans".
  *
@@ -148,6 +149,8 @@ export function fallbackAnswer(question, recs) {
 
 /**
  * Ask a question using the best available provider.
+ * @param {{ question: string, context: string, recs: { title: string, action: string, impact: string, group: string }[],
+ *   apiKey?: string, model?: string, fetchImpl?: typeof fetch, globalObj?: any, timeoutMs?: number }} opts
  * @returns {Promise<{ text: string, provider: 'on-device'|'gemini'|'rules' }>}
  */
 export async function ask({

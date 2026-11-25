@@ -1,10 +1,13 @@
+// @ts-check
 /**
  * UI controller. All dynamic text is written with textContent / DOM APIs
  * (never innerHTML) so data from APIs or the model cannot inject markup.
  */
 
 import { naqi, category } from './aqi.js';
-import { upcoming, bestWindows, worstHour, formatHour, formatRange } from './forecast.js';
+import { upcoming, bestWindows, worstHour, formatRange } from './forecast.js';
+import { outingComparison } from './impact.js';
+import { placeLabel, chartModel, answerParagraphs, providerLabel } from './view.js';
 import { advise, normaliseProfile } from './advisor.js';
 import { searchPlaces, fetchAirQuality } from './api.js';
 import { ask, buildContext, onDeviceAvailable, sanitizeQuestion } from './ai.js';
@@ -15,6 +18,12 @@ const GROUP_LABEL = { health: 'Protect health', routine: 'Daily routine', indoor
 
 const state = { place: null, air: null, result: null, apiKey: '' };
 
+/**
+ * Create an element safely (text via textContent only).
+ * @param {string} tag
+ * @param {{ cls?: string, text?: string, attrs?: Record<string, string> }} [opts]
+ * @param {Node[]} [children]
+ */
 function el(tag, { cls, text, attrs } = {}, children = []) {
   const node = document.createElement(tag);
   if (cls) node.className = cls;
@@ -54,10 +63,6 @@ function loadProfile() {
 
 function saveProfile(p) {
   try { localStorage.setItem(PROFILE_KEY, JSON.stringify(p)); } catch { /* ignore */ }
-}
-
-function placeLabel(p) {
-  return [p.name, p.admin1, p.country].filter(Boolean).join(', ');
 }
 
 function renderPlaces(list) {
@@ -101,18 +106,12 @@ function renderNow() {
 
 function renderChart(points, windows) {
   const chart = $('#chart');
-  chart.replaceChildren();
-  const max = Math.max(60, ...points.map((p) => p.pm25));
-  const inWindow = (t) => windows.some((w) => t >= w.start && t <= w.end);
-  for (const p of points) {
-    const lvl = category(naqi({ pm25: p.pm25 }).value).key;
-    const bar = el('div', { cls: `bar lvl-${lvl}${inWindow(p.time) ? ' best' : ''}`, attrs: { title: `${formatHour(p.time)}: ${Math.round(p.pm25)} µg/m³` } });
-    bar.style.setProperty('--h', String(p.pm25 / max));
-    chart.append(el('div', { cls: 'col' }, [bar, el('span', { cls: 'hr', text: formatHour(p.time).replace(' ', '') })]));
-  }
-  const summary = points.length
-    ? `Hourly PM2.5 forecast from ${formatHour(points[0].time)}; highest ${Math.round(Math.max(...points.map((p) => p.pm25)))}, lowest ${Math.round(Math.min(...points.map((p) => p.pm25)))} µg/m³.`
-    : 'Forecast unavailable.';
+  const { bars, summary } = chartModel(points, windows);
+  chart.replaceChildren(...bars.map((b) => {
+    const bar = el('div', { cls: `bar lvl-${b.level}${b.best ? ' best' : ''}`, attrs: { title: b.title } });
+    bar.style.setProperty('--h', String(b.height));
+    return el('div', { cls: 'col' }, [bar, el('span', { cls: 'hr', text: b.label })]);
+  }));
   chart.setAttribute('aria-label', summary);
 
   const ul = $('#windows');
@@ -121,6 +120,22 @@ function renderChart(points, windows) {
     ul.append(el('li', { text: `${formatRange(w.start, w.end)} · avg ${w.avgPm25} µg/m³ PM2.5` }));
   }
   if (!windows.length) ul.append(el('li', { cls: 'muted', text: 'No clean window in waking hours. Limit time outdoors.' }));
+}
+
+function renderImpact(pm25, windows) {
+  const box = $('#impact');
+  if (!Number.isFinite(pm25)) { box.hidden = true; return; }
+  const o = outingComparison({ nowPm25: pm25, windowPm25: windows[0]?.avgPm25 ?? null });
+  const items = [
+    ['1-hour walk now', `${o.now} µg`, 'PM2.5 inhaled (estimate)'],
+    o.inWindow == null ? null
+      : [`Same walk at ${formatRange(windows[0].start, windows[0].end)}`, `${o.inWindow} µg`, `${o.windowSaving}% less`],
+    ['Now, with a fitted N95', `${o.withMask} µg`, `up to ${o.maskSaving}% less`],
+  ].filter(Boolean);
+  box.replaceChildren(...items.map(([k, v, n]) => el('div', { cls: 'imp' }, [
+    el('p', { cls: 'k', text: k }), el('p', { cls: 'v', text: v }), el('p', { cls: 'n', text: n }),
+  ])));
+  box.hidden = false;
 }
 
 function renderRecs() {
@@ -145,7 +160,11 @@ function recompute() {
   const points = upcoming(state.air.hourly, nowIso, 24);
   const windows = bestWindows(points, { length: 2, count: 2 });
   renderChart(points, windows);
-  state.result = advise({ naqi: idx.value, windows, worst: worstHour(points) }, profile);
+  renderImpact(state.air.current.pm2_5, windows);
+  state.result = advise({
+    naqi: idx.value, pm25: state.air.current.pm2_5, lat: state.place.latitude, lon: state.place.longitude,
+    windows, worst: worstHour(points),
+  }, profile);
   state.context = buildContext({
     place: placeLabel(state.place), naqi: idx.value, levelLabel: level.label,
     dominant: idx.dominant, current: state.air.current, windows,
@@ -198,11 +217,10 @@ async function onAsk(e) {
   const { text, provider } = await ask({
     question, context: state.context, recs: state.result.recs, apiKey: state.apiKey,
   });
-  const label = { 'on-device': 'On-device Gemini Nano', gemini: 'Gemini API', rules: 'Built-in guidance engine' }[provider];
   out.replaceChildren(
     el('p', { cls: 'q', text: question }),
-    ...text.split(/\n{2,}/).map((para) => el('p', { text: para.replace(/\*\*/g, '') })),
-    el('p', { cls: 'src', text: `Answered by: ${label}` }),
+    ...answerParagraphs(text).map((para) => el('p', { text: para })),
+    el('p', { cls: 'src', text: `Answered by: ${providerLabel(provider)}` }),
   );
 }
 

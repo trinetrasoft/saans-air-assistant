@@ -109,3 +109,10 @@ input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent);
 .foot { max-width: 960px; margin: 0 auto; padding: 8px 16px 24px; font-size: 13px; color: var(--muted); }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+.impact-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.imp { background: #f6f3ec; border-radius: 12px; padding: 10px 14px; }
+.imp p { margin: 0; }
+.imp .k { font-size: 13px; color: var(--muted); }
+.imp .v { font-size: 26px; font-weight: 800; }
+.imp .n { font-size: 13px; color: #0b4f49; font-weight: 600; }

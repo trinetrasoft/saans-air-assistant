@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Air-quality index helpers.
  *

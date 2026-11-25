@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Forecast analysis: find the cleanest windows for outdoor activity and
  * ventilation from an hourly PM2.5 forecast.

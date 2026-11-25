@@ -1,0 +1,35 @@
+export default [
+  {
+    files: ['src/**/*.js', 'tests/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: {
+        window: 'readonly', document: 'readonly', navigator: 'readonly', localStorage: 'readonly',
+        fetch: 'readonly', AbortController: 'readonly', URLSearchParams: 'readonly', setTimeout: 'readonly',
+        clearTimeout: 'readonly', globalThis: 'readonly', Event: 'readonly', Node: 'readonly', console: 'readonly',
+      },
+    },
+    rules: {
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      'no-undef': 'error',
+      'no-unreachable': 'error',
+      'no-dupe-keys': 'error',
+      'no-empty': ['error', { allowEmptyCatch: true }],
+      'no-var': 'error',
+      'no-shadow': 'error',
+      'no-param-reassign': 'error',
+      'no-unsafe-finally': 'error',
+      'no-self-compare': 'error',
+      'no-template-curly-in-string': 'error',
+      curly: ['error', 'multi-line'],
+      'no-console': 'error',
+      'no-eval': 'error',
+      'no-implied-eval': 'error',
+      'no-new-func': 'error',
+      eqeqeq: ['error', 'always', { null: 'ignore' }],
+      'prefer-const': 'error',
+      'no-control-regex': 'error',
+    },
+  },
+];

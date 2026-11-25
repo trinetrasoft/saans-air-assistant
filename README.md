@@ -19,6 +19,8 @@ Every suggestion comes with a plain-language explanation of the impact of that c
 | 1. Where are you? | City search (Open-Meteo geocoding) or browser geolocation |
 | 2. Household | Children, older adults, respiratory conditions, commute mode, cooking fuel, heating, purifier. Saved only in this browser |
 | 3. Air right now | **India NAQI** computed from live PM2.5/PM10 with CPCB breakpoints, category and health advice, plus pollutants (PM2.5, PM10, NO₂, O₃) |
+| What one hour outside costs you | **Quantified impact**: PM2.5 inhaled during a 1-hour walk now vs in the cleanest window vs with an N95 (dose = concentration × breathing rate, EPA values) |
+| Delhi-NCR | Detects NCR locations and explains the **GRAP stage** implied by the reading |
 | Cleanest hours | Hourly PM2.5 forecast chart with the **two cleanest 2-hour windows** in waking hours, and the worst peak to avoid |
 | 4. Your plan | Ranked, explainable actions grouped as *Protect health · Daily routine · Indoor air · Sustainable switch*, each with an **Impact** line |
 | 5. Ask Saans | GenAI Q&A grounded in live readings, the forecast and the household profile |
@@ -35,15 +37,17 @@ The recommendation engine itself is deterministic and fully tested. The model *e
 
 ## Quality
 
-- **Testing:** 29 unit tests with Node's built-in test runner (`npm test`), about 99% line coverage of `src/`. CI runs on every push.
-- **Security:** a strict Content-Security-Policy that whitelists only the APIs it calls. No `innerHTML`: all dynamic text goes through `textContent`. User input is sanitised and capped. The profile is validated against an allow-list. The API key is never placed in a URL or stored persistently. `no-referrer`. No dependencies.
+- **Testing:** 37 unit tests with Node's built-in test runner (`npm test`), about 99% line coverage of `src/`. Rendering logic sits in pure, tested view-models (`src/view.js`).
+- **Code quality:** ESLint (`npm run lint`) and TypeScript type checking of JSDoc-annotated JavaScript (`// @ts-check`, `npm run typecheck`). Small single-purpose modules. CI runs lint, type check and tests on every push.
+- **Security** ([SECURITY.md](SECURITY.md)): a strict Content-Security-Policy that whitelists only the APIs it calls. No `innerHTML`: all dynamic text goes through `textContent`. User input is sanitised and capped. The profile is validated against an allow-list. The API key is never placed in a URL or stored persistently. `no-referrer`. No dependencies.
 - **Efficiency:** about 30 KB, zero runtime dependencies, no build step. API responses are cached in memory for 10 minutes, and requests time out after 10 s.
-- **Accessibility:** semantic landmarks, a skip link, labelled controls, `aria-live` updates, a text alternative for the gauge and chart, colour always paired with text, visible focus rings and `prefers-reduced-motion`.
+- **Accessibility** ([docs/ACCESSIBILITY.md](docs/ACCESSIBILITY.md)): semantic landmarks, a skip link, labelled controls, `aria-live` updates, a text alternative for the gauge and chart, colour always paired with text, visible focus rings and `prefers-reduced-motion`.
 
 ## Run locally
 
 ```bash
-npm test                 # unit tests (Node 20+)
+npm test                 # unit tests (Node 20+, no install needed)
+npm install && npm run check   # lint + type check + tests
 python3 -m http.server   # then open http://localhost:8000
 ```
 
@@ -55,6 +59,8 @@ styles.css        responsive, accessible styles
 src/aqi.js        CPCB NAQI sub-indices and categories
 src/forecast.js   upcoming hours, cleanest windows, peak hour
 src/advisor.js    explainable recommendation engine
+src/impact.js     inhaled-dose model, % savings, Delhi-NCR GRAP stages
+src/view.js       pure view-models for the chart and answers
 src/api.js        Open-Meteo clients (timeouts, cache, validation)
 src/ai.js         grounded prompts; Gemini Nano / Gemini API / fallback
 src/app.js        UI controller (DOM-safe rendering)
