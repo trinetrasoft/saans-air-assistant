@@ -64,9 +64,9 @@ export function subIndex(conc, table) {
 export function naqi({ pm25, pm10 }) {
   const a = pm25 == null ? null : subIndex(pm25, BREAKPOINTS.pm25);
   const b = pm10 == null ? null : subIndex(pm10, BREAKPOINTS.pm10);
-  if (a == null && b == null) return null;
-  if (b == null || (a != null && a >= b)) return { value: a, dominant: 'pm25' };
-  return { value: b, dominant: 'pm10' };
+  if (a != null && (b == null || a >= b)) return { value: a, dominant: 'pm25' };
+  if (b != null) return { value: b, dominant: 'pm10' };
+  return null;
 }
 
 /**

@@ -34,9 +34,9 @@ test('bestWindows picks the cleanest non-overlapping waking-hour windows', () =>
   const pts = series(6, [200, 190, 180, 170, 160, 150, 140, 40, 45, 120, 30, 35]);
   const w = bestWindows(pts, { length: 2, count: 2 });
   assert.equal(w.length, 2);
-  assert.equal(w[0].start, '2026-11-25T13:00');
-  assert.equal(w[1].start, '2026-11-25T16:00');
-  assert.equal(w[1].avgPm25, 32.5);
+  assert.equal(w[0].start, '2026-11-25T16:00'); // cleanest first
+  assert.equal(w[0].avgPm25, 32.5);
+  assert.equal(w[1].start, '2026-11-25T13:00');
 });
 
 test('bestWindows ignores night hours', () => {

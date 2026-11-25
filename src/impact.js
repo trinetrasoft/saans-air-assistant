@@ -53,7 +53,11 @@ export function outingComparison({ nowPm25, windowPm25 }) {
   };
 }
 
-/** Delhi-NCR bounding box (approx.) where CAQM's GRAP applies. */
+/**
+ * Delhi-NCR bounding box (approx.) where CAQM's GRAP applies.
+ * @param {number} lat
+ * @param {number} lon
+ */
 export function inDelhiNcr(lat, lon) {
   return lat >= 27.9 && lat <= 29.3 && lon >= 76.4 && lon <= 78.1;
 }

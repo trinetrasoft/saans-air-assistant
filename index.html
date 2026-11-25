@@ -10,10 +10,11 @@
   <title>Saans · Urban Air Quality Assistant</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="styles.css">
-  <script type="module" src="src/app.js"></script>
+  <script type="module" src="src/main.js"></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
+  <noscript><p class="noscript">Saans needs JavaScript to fetch live air-quality data.</p></noscript>
   <header class="top">
     <div class="brand">
       <span class="logo" aria-hidden="true">◌</span>
@@ -24,15 +25,16 @@
     </div>
   </header>
 
-  <main id="main">
+  <main id="main" tabindex="-1">
     <section class="card" aria-labelledby="where-h">
       <h2 id="where-h">1 · Where are you?</h2>
       <form id="search-form" class="row" role="search">
-        <label for="city" class="sr-only">City or area</label>
-        <input id="city" name="city" type="search" autocomplete="off" placeholder="e.g. Delhi, Lucknow, Hyderabad" required minlength="2" maxlength="80">
+        <label for="city" class="field-label">City or area</label>
+        <input id="city" name="city" type="search" autocomplete="address-level2" aria-describedby="city-hint" placeholder="e.g. Delhi, Lucknow, Hyderabad" required minlength="2" maxlength="80">
         <button type="submit">Search</button>
         <button type="button" id="locate" class="ghost">Use my location</button>
       </form>
+      <p id="city-hint" class="hint">Type at least 2 letters, then pick your place from the list.</p>
       <ul id="places" class="places" aria-label="Matching places"></ul>
     </section>
 
@@ -73,7 +75,7 @@
     </section>
 
     <section id="results" class="card" aria-labelledby="now-h" hidden>
-      <h2 id="now-h">3 · Your air right now</h2>
+      <h2 id="now-h" tabindex="-1">3 · Your air right now</h2>
       <div class="now">
         <div id="gauge" class="gauge" role="img" aria-label=""></div>
         <div>
@@ -98,24 +100,25 @@
 
     <section id="ask" class="card" aria-labelledby="ask-h" hidden>
       <h2 id="ask-h">5 · Ask Saans <span class="badge" id="provider-badge">AI</span></h2>
-      <div class="chips" id="chips">
+      <div class="chips" id="chips" role="group" aria-label="Suggested questions">
         <button type="button" class="chip">Is it safe for my kids to play outside this evening?</button>
         <button type="button" class="chip">How can I cut my family's emissions this week?</button>
         <button type="button" class="chip">What should I do indoors to breathe cleaner air?</button>
       </div>
       <form id="ask-form" class="row">
-        <label for="question" class="sr-only">Your question</label>
+        <label for="question" class="field-label">Your question</label>
         <input id="question" type="text" maxlength="500" placeholder="Ask anything about today's air…" required>
-        <button type="submit">Ask</button>
+        <button type="submit" id="ask-btn">Ask</button>
       </form>
-      <div id="answer" class="answer" aria-live="polite"></div>
+      <div id="answer" class="answer" aria-live="polite" aria-busy="false"></div>
       <details class="key">
         <summary>AI settings</summary>
         <p>Saans uses Chrome's built-in on-device Gemini Nano when available. Otherwise you can paste your own
           <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Gemini API key</a>.
           It is sent only to Google's Gemini API and kept in memory for this tab. Without either, Saans answers from its built-in guidance engine.</p>
         <label for="api-key">Gemini API key</label>
-        <input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="Optional">
+        <input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="Optional" aria-describedby="api-key-hint">
+        <p id="api-key-hint" class="hint">Never stored or shared. Leave blank to use on-device AI or built-in guidance.</p>
       </details>
     </section>
   </main>

@@ -4,23 +4,27 @@
  * `fetchImpl` is injectable so the functions can be unit-tested offline.
  */
 
-const GEO_URL = 'https://geocoding-api.open-meteo.com/v1/search';
-const AIR_URL = 'https://air-quality-api.open-meteo.com/v1/air-quality';
-const TIMEOUT_MS = 10000;
+import { ENDPOINTS, NETWORK, INPUT_LIMITS } from './config.js';
 
-/** Small in-memory cache so repeated lookups don't hit the network. */
+/** Small bounded in-memory cache so repeated lookups don't hit the network. */
 const cache = new Map();
-const CACHE_TTL_MS = 10 * 60 * 1000;
 
+/**
+ * GET JSON with a timeout and a TTL cache (oldest entry evicted when full).
+ * @param {string} url
+ * @param {typeof fetch} fetchImpl
+ * @returns {Promise<any>}
+ */
 async function getJson(url, fetchImpl) {
   const hit = cache.get(url);
-  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.data;
+  if (hit && Date.now() - hit.at < NETWORK.cacheTtlMs) return hit.data;
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  const timer = setTimeout(() => ctrl.abort(), NETWORK.timeoutMs);
   try {
     const res = await fetchImpl(url, { signal: ctrl.signal });
     if (!res.ok) throw new Error(`Request failed (${res.status})`);
     const data = await res.json();
+    if (cache.size >= NETWORK.cacheMaxEntries) cache.delete(cache.keys().next().value);
     cache.set(url, { at: Date.now(), data });
     return data;
   } finally {
@@ -35,14 +39,19 @@ export function clearCache() {
 
 /**
  * Search places by name.
+ * @param {string} query
+ * @param {typeof fetch} [fetchImpl]
  * @returns {Promise<{name:string, admin1?:string, country?:string, latitude:number, longitude:number}[]>}
  */
 export async function searchPlaces(query, fetchImpl = fetch) {
-  const q = String(query ?? '').trim().slice(0, 80);
-  if (q.length < 2) return [];
-  const url = `${GEO_URL}?${new URLSearchParams({ name: q, count: '5', language: 'en', format: 'json' })}`;
+  const q = String(query ?? '').trim().slice(0, INPUT_LIMITS.placeQueryMax);
+  if (q.length < INPUT_LIMITS.placeQueryMin) return [];
+  const params = new URLSearchParams({ name: q, count: String(NETWORK.maxPlaces), language: 'en', format: 'json' });
+  const url = `${ENDPOINTS.geocoding}?${params}`;
   const data = await getJson(url, fetchImpl);
-  return (data.results ?? [])
+  /** @type {Array<Record<string, any>>} */
+  const results = data.results ?? [];
+  return results
     .filter((r) => Number.isFinite(r.latitude) && Number.isFinite(r.longitude))
     .map((r) => ({
       name: String(r.name),
@@ -53,13 +62,20 @@ export async function searchPlaces(query, fetchImpl = fetch) {
     }));
 }
 
-/** Validate coordinates. */
+/**
+ * Validate coordinates.
+ * @param {number} lat
+ * @param {number} lon
+ */
 export function validCoords(lat, lon) {
   return Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
 }
 
 /**
- * Current conditions plus a 2-day hourly PM2.5 forecast.
+ * Current conditions plus an hourly PM2.5 forecast.
+ * @param {number} lat
+ * @param {number} lon
+ * @param {typeof fetch} [fetchImpl]
  * @returns {Promise<{ current: Record<string, number|string>, hourly: { time: string[], pm2_5: (number|null)[] } }>}
  */
 export async function fetchAirQuality(lat, lon, fetchImpl = fetch) {
@@ -69,10 +85,10 @@ export async function fetchAirQuality(lat, lon, fetchImpl = fetch) {
     longitude: lon.toFixed(4),
     current: 'pm2_5,pm10,nitrogen_dioxide,ozone,carbon_monoxide,us_aqi',
     hourly: 'pm2_5',
-    forecast_days: '2',
+    forecast_days: String(NETWORK.forecastDays),
     timezone: 'auto',
   });
-  const data = await getJson(`${AIR_URL}?${params}`, fetchImpl);
+  const data = await getJson(`${ENDPOINTS.airQuality}?${params}`, fetchImpl);
   if (!data || !data.current || !data.hourly) throw new Error('Unexpected air-quality response');
   return { current: data.current, hourly: data.hourly };
 }

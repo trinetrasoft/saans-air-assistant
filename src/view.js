@@ -48,7 +48,15 @@ export function answerParagraphs(text) {
     .filter(Boolean);
 }
 
-/** Human label for the provider that answered. */
+/** @type {Readonly<Record<string, string>>} */
+const PROVIDER_LABELS = Object.freeze({
+  'on-device': 'On-device Gemini Nano', gemini: 'Gemini API', rules: 'Built-in guidance engine',
+});
+
+/**
+ * Human label for the provider that answered.
+ * @param {string} provider
+ */
 export function providerLabel(provider) {
-  return { 'on-device': 'On-device Gemini Nano', gemini: 'Gemini API', rules: 'Built-in guidance engine' }[provider] ?? 'Saans';
+  return PROVIDER_LABELS[provider] ?? 'Saans';
 }

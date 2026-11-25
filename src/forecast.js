@@ -9,7 +9,11 @@
  * @typedef {{ start: string, end: string, avgPm25: number }} Window
  */
 
-/** Hour (0-23) of a local ISO timestamp without relying on the runtime timezone. */
+/**
+ * Hour (0-23) of a local ISO timestamp without relying on the runtime timezone.
+ * @param {string} iso
+ * @returns {number} NaN when the timestamp is malformed
+ */
 export function hourOf(iso) {
   const m = /T(\d{2}):/.exec(iso);
   return m ? Number(m[1]) : NaN;
@@ -38,46 +42,75 @@ export function upcoming(hourly, nowIso, hours = 24) {
 }
 
 /**
- * Best contiguous windows of `length` hours by lowest mean PM2.5, limited to
+ * Best contiguous windows of `length` hours by lowest mean PM2.5 (cleanest
+ * first), limited to
  * waking hours [fromHour, toHour). Windows do not overlap.
  * @param {HourPoint[]} points consecutive hourly points
  * @param {{ length?: number, count?: number, fromHour?: number, toHour?: number }} [opts]
  * @returns {Window[]}
  */
 export function bestWindows(points, { length = 2, count = 2, fromHour = 6, toHour = 22 } = {}) {
-  const candidates = [];
+  const awake = (/** @type {HourPoint} */ p) => {
+    const h = hourOf(p.time);
+    return h >= fromHour && h < toHour;
+  };
+  const candidates = windowCandidates(points, length, awake).sort((a, b) => a.avg - b.avg || a.i - b.i);
+  // Cleanest first: callers treat windows[0] as "the" cleanest window.
+  return pickNonOverlapping(candidates, length, count).map(({ i, avg }) => ({
+    start: points[i].time,
+    end: points[i + length - 1].time,
+    avgPm25: Math.round(avg * 10) / 10,
+  }));
+}
+
+/**
+ * Every run of `length` consecutive points that passes `keep`, with its mean.
+ * @param {HourPoint[]} points
+ * @param {number} length
+ * @param {(p: HourPoint) => boolean} keep
+ * @returns {{ i: number, avg: number }[]}
+ */
+function windowCandidates(points, length, keep) {
+  /** @type {{ i: number, avg: number }[]} */
+  const out = [];
   for (let i = 0; i + length <= points.length; i += 1) {
     const slice = points.slice(i, i + length);
-    const inHours = slice.every((p) => {
-      const h = hourOf(p.time);
-      return h >= fromHour && h < toHour;
-    });
-    if (!inHours) continue;
-    const avg = slice.reduce((s, p) => s + p.pm25, 0) / length;
-    candidates.push({ i, avg });
+    if (slice.every(keep)) out.push({ i, avg: slice.reduce((sum, p) => sum + p.pm25, 0) / length });
   }
-  candidates.sort((a, b) => a.avg - b.avg || a.i - b.i);
+  return out;
+}
+
+/**
+ * Take candidates in order, skipping any that overlap one already taken.
+ * @param {{ i: number, avg: number }[]} ranked
+ * @param {number} length
+ * @param {number} count
+ */
+function pickNonOverlapping(ranked, length, count) {
+  /** @type {{ i: number, avg: number }[]} */
   const chosen = [];
-  for (const c of candidates) {
-    if (chosen.length >= count) break;
+  for (const c of ranked) {
+    if (chosen.length === count) break;
     if (chosen.every((o) => Math.abs(o.i - c.i) >= length)) chosen.push(c);
   }
-  return chosen
-    .sort((a, b) => a.i - b.i)
-    .map(({ i, avg }) => ({
-      start: points[i].time,
-      end: points[i + length - 1].time,
-      avgPm25: Math.round(avg * 10) / 10,
-    }));
+  return chosen;
 }
 
-/** Worst single hour (highest PM2.5) in the points, or null. */
+/**
+ * Worst single hour (highest PM2.5) in the points, or null.
+ * @param {HourPoint[]} points
+ * @returns {HourPoint|null}
+ */
 export function worstHour(points) {
   if (!points.length) return null;
-  return points.reduce((w, p) => (p.pm25 > w.pm25 ? p : w));
+  return points.reduce((worst, p) => (p.pm25 > worst.pm25 ? p : worst));
 }
 
-/** Label for an inclusive range of hourly slots, e.g. 12 PM–2 PM for slots 12:00 and 13:00. */
+/**
+ * Label for an inclusive range of hourly slots, e.g. 12 PM–2 PM for slots 12:00 and 13:00.
+ * @param {string} startIso
+ * @param {string} endIso
+ */
 export function formatRange(startIso, endIso) {
   const end = hourOf(endIso);
   if (Number.isNaN(end)) return formatHour(startIso);
@@ -85,7 +118,10 @@ export function formatRange(startIso, endIso) {
   return `${formatHour(startIso)}–${formatHour(next)}`;
 }
 
-/** Format "YYYY-MM-DDTHH:MM" as "7 AM" style label. */
+/**
+ * Format "YYYY-MM-DDTHH:MM" as a "7 AM" style label.
+ * @param {string} iso
+ */
 export function formatHour(iso) {
   const h = hourOf(iso);
   if (Number.isNaN(h)) return '';

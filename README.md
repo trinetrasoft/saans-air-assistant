@@ -37,8 +37,8 @@ The recommendation engine itself is deterministic and fully tested. The model *e
 
 ## Quality
 
-- **Testing:** 37 unit tests with Node's built-in test runner (`npm test`), about 99% line coverage of `src/`. Rendering logic sits in pure, tested view-models (`src/view.js`).
-- **Code quality:** ESLint (`npm run lint`) and TypeScript type checking of JSDoc-annotated JavaScript (`// @ts-check`, `npm run typecheck`). Small single-purpose modules. CI runs lint, type check and tests on every push.
+- **Testing:** 43 unit tests with Node's built-in test runner (`npm test`), about 99% line coverage of `src/`. The whole data-to-plan pipeline (`src/analysis.js`) is pure and tested end to end.
+- **Code quality:** a rule-based advisor (one small function per piece of advice), central config, and shared types. Strict TypeScript checking of JSDoc-typed JavaScript (`tsc --strict`). ESLint enforces complexity ≤ 10 and functions ≤ 60 lines. CI runs lint, type check and tests on every push. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 - **Security** ([SECURITY.md](SECURITY.md)): a strict Content-Security-Policy that whitelists only the APIs it calls. No `innerHTML`: all dynamic text goes through `textContent`. User input is sanitised and capped. The profile is validated against an allow-list. The API key is never placed in a URL or stored persistently. `no-referrer`. No dependencies.
 - **Efficiency:** about 30 KB, zero runtime dependencies, no build step. API responses are cached in memory for 10 minutes, and requests time out after 10 s.
 - **Accessibility** ([docs/ACCESSIBILITY.md](docs/ACCESSIBILITY.md)): semantic landmarks, a skip link, labelled controls, `aria-live` updates, a text alternative for the gauge and chart, colour always paired with text, visible focus rings and `prefers-reduced-motion`.
@@ -54,17 +54,24 @@ python3 -m http.server   # then open http://localhost:8000
 ## Structure
 
 ```
-index.html        UI shell, CSP
-styles.css        responsive, accessible styles
-src/aqi.js        CPCB NAQI sub-indices and categories
-src/forecast.js   upcoming hours, cleanest windows, peak hour
-src/advisor.js    explainable recommendation engine
-src/impact.js     inhaled-dose model, % savings, Delhi-NCR GRAP stages
-src/view.js       pure view-models for the chart and answers
-src/api.js        Open-Meteo clients (timeouts, cache, validation)
-src/ai.js         grounded prompts; Gemini Nano / Gemini API / fallback
-src/app.js        UI controller (DOM-safe rendering)
-tests/            node:test suites
+index.html            UI shell, CSP
+styles.css            responsive, accessible styles
+src/main.js           entry point: events and state
+src/analysis.js       pure pipeline: raw data + profile → index, windows, impact, plan, AI context
+src/config.js         endpoints, limits, thresholds          src/types.js  shared JSDoc types
+src/aqi.js            CPCB NAQI sub-indices and categories
+src/forecast.js       upcoming hours, cleanest windows, peak hour
+src/impact.js         inhaled-dose model, % savings, Delhi-NCR GRAP stages
+src/advisor.js        runs the rules and ranks recommendations
+src/rules/*.js        health, routine, indoor and sustainable rules
+src/profile.js        profile validation and persistence
+src/api.js            Open-Meteo clients (timeouts, bounded cache, validation)
+src/ai.js             provider orchestration with timeouts
+src/ai/prompt.js      system instruction and grounded context
+src/ai/providers.js   Gemini Nano, Gemini API and deterministic fallback
+src/view.js           pure view-models (chart, answers)
+src/ui/*.js           DOM helpers, form binding, renderers
+tests/                node:test suites
 ```
 
 Data: [Open-Meteo Air Quality API](https://open-meteo.com/en/docs/air-quality-api) (CAMS). NAQI breakpoints are from India's CPCB. This app does not give medical advice.
